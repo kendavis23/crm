@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { createContact, updateContact } from '@/app/actions/contacts'
-import type { Contact } from './ContactsClient'
+import { createFolder } from '@/app/actions/folders'
+import type { Contact, Folder } from './ContactsClient'
 
 const inputCls = 'w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-100 text-sm placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors'
 
@@ -17,9 +18,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function ContactDrawer({
   contact,
+  folders,
   onClose,
 }: {
   contact?: Contact
+  folders: Folder[]
   onClose: () => void
 }) {
   const isEdit = !!contact
@@ -27,6 +30,25 @@ export default function ContactDrawer({
   const [tagInput, setTagInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  const [localFolders, setLocalFolders] = useState<Folder[]>(folders)
+  const [selectedFolderId, setSelectedFolderId] = useState<string>(contact?.folder_id ?? '')
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [isCreatingFolder, startFolderTransition] = useTransition()
+
+  function handleCreateFolder() {
+    const name = newFolderName.trim()
+    if (!name) return
+    startFolderTransition(async () => {
+      const result = await createFolder(name)
+      if ('error' in result) { setError(result.error); return }
+      setLocalFolders(prev => [...prev, result].sort((a, b) => a.name.localeCompare(b.name)))
+      setSelectedFolderId(result.id)
+      setShowNewFolder(false)
+      setNewFolderName('')
+    })
+  }
 
   function commitTag() {
     const val = tagInput.trim().toLowerCase()
@@ -41,12 +63,9 @@ export default function ContactDrawer({
     }
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+  function handleAction(formData: FormData) {
     formData.set('tags', tags.join(','))
     setError(null)
-
     startTransition(async () => {
       const result = isEdit
         ? await updateContact(contact.id, formData)
@@ -77,7 +96,7 @@ export default function ContactDrawer({
         </div>
 
         {/* Scrollable form body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <form action={handleAction} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <Field label="Name *">
             <input
               name="name"
@@ -106,31 +125,62 @@ export default function ContactDrawer({
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Email">
-              <input name="email" type="email" defaultValue={contact?.email ?? ''} className={inputCls} placeholder="jane@acme.com" />
-            </Field>
-            <Field label="Phone">
-              <input name="phone" defaultValue={contact?.phone ?? ''} className={inputCls} placeholder="+1 555 0100" />
-            </Field>
-          </div>
+          <Field label="Folder">
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <select
+                  name="folder_id"
+                  value={selectedFolderId}
+                  onChange={e => setSelectedFolderId(e.target.value)}
+                  className={`${inputCls} flex-1`}
+                >
+                  <option value="">— No folder —</option>
+                  {localFolders.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                {!showNewFolder && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewFolder(true)}
+                    className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-xs whitespace-nowrap transition-colors cursor-pointer"
+                  >
+                    + New
+                  </button>
+                )}
+              </div>
+              {showNewFolder && (
+                <div className="flex gap-2">
+                  <input
+                    value={newFolderName}
+                    onChange={e => setNewFolderName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateFolder() } }}
+                    className={`${inputCls} flex-1`}
+                    placeholder="Folder name"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateFolder}
+                    disabled={!newFolderName.trim() || isCreatingFolder}
+                    className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs hover:bg-indigo-500 transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {isCreatingFolder ? '…' : 'Create'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewFolder(false); setNewFolderName('') }}
+                    className="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </Field>
 
           <Field label="LinkedIn URL">
             <input name="linkedin" defaultValue={contact?.linkedin ?? ''} className={inputCls} placeholder="https://linkedin.com/in/..." />
-          </Field>
-
-          <Field label="Last contacted">
-            <input name="last_contacted" type="date" defaultValue={contact?.last_contacted ?? ''} className={inputCls} />
-          </Field>
-
-          <Field label="Notes">
-            <textarea
-              name="notes"
-              defaultValue={contact?.notes ?? ''}
-              rows={3}
-              className={`${inputCls} resize-none`}
-              placeholder="Any notes…"
-            />
           </Field>
 
           <Field label="Tags">
@@ -163,6 +213,16 @@ export default function ContactDrawer({
                 placeholder="Type a tag and press Enter"
               />
             </div>
+          </Field>
+
+          <Field label="Notes">
+            <textarea
+              name="notes"
+              defaultValue={contact?.notes ?? ''}
+              rows={3}
+              className={`${inputCls} resize-none`}
+              placeholder="Any notes…"
+            />
           </Field>
 
           {error && <p className="text-red-400 text-xs">{error}</p>}

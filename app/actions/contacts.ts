@@ -6,15 +6,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 function parseContact(formData: FormData) {
   return {
     name:             (formData.get('name')             as string)?.trim() || null,
+    folder_id:        (formData.get('folder_id')        as string)?.trim() || null,
     company:          (formData.get('company')          as string)?.trim() || null,
     line_of_business: (formData.get('line_of_business') as string)?.trim() || null,
     title:            (formData.get('title')            as string)?.trim() || null,
     rel_type:         (formData.get('rel_type')         as string)?.trim() || null,
-    email:            (formData.get('email')            as string)?.trim() || null,
-    phone:            (formData.get('phone')            as string)?.trim() || null,
     linkedin:         (formData.get('linkedin')         as string)?.trim() || null,
     notes:            (formData.get('notes')            as string)?.trim() || null,
-    last_contacted:   (formData.get('last_contacted')   as string)?.trim() || null,
   }
 }
 

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import ContactsClient, { type Contact } from './components/ContactsClient'
+import ContactsClient, { type Contact, type Folder } from './components/ContactsClient'
 
 function StatCard({ label, value, sub, accent = 'indigo' }: { label: string; value: number; sub?: string; accent?: 'indigo' | 'red' | 'sky' | 'violet' }) {
   const border = { indigo: 'border-l-indigo-500', red: 'border-l-red-500',   sky: 'border-l-sky-500',    violet: 'border-l-violet-500' }[accent]
@@ -16,11 +16,14 @@ function StatCard({ label, value, sub, accent = 'indigo' }: { label: string; val
 export default async function ContactsPage() {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('id, name, company, line_of_business, title, rel_type, email, phone, linkedin, notes, last_contacted, tags(tag)')
-    .order('company')
-    .order('name')
+  const [{ data: contactData, error }, { data: folderData }] = await Promise.all([
+    supabase
+      .from('contacts')
+      .select('id, name, company, line_of_business, title, rel_type, email, phone, linkedin, notes, last_contacted, folder_id, folders(id, name), tags(tag)')
+      .order('company')
+      .order('name'),
+    supabase.from('folders').select('id, name').order('name'),
+  ])
 
   if (error) {
     return (
@@ -30,7 +33,9 @@ export default async function ContactsPage() {
     )
   }
 
-  const contacts = data as Contact[]
+  const contacts = contactData as Contact[]
+  const folders  = (folderData ?? []) as Folder[]
+
   const total       = contacts.length
   const hsbc        = contacts.filter(c => c.company === 'HSBC').length
   const capco       = contacts.filter(c => c.company === 'Capco').length
@@ -52,7 +57,7 @@ export default async function ContactsPage() {
         <StatCard label="Influential"  value={influential} accent="violet" sub="exec or influential tag" />
       </div>
 
-      <ContactsClient contacts={contacts} />
+      <ContactsClient contacts={contacts} folders={folders} />
     </main>
   )
 }

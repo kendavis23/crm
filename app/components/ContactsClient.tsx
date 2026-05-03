@@ -6,9 +6,13 @@ import ContactDrawer from './ContactDrawer'
 
 type Tag = { tag: string }
 
+export type Folder = { id: string; name: string }
+
 export type Contact = {
   id: string
   name: string
+  folder_id: string | null
+  folders: { id: string; name: string } | null
   company: string | null
   line_of_business: string | null
   title: string | null
@@ -61,7 +65,8 @@ function FilterPill({ label, active, onClick }: { label: string; active: boolean
   )
 }
 
-export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
+export default function ContactsClient({ contacts, folders }: { contacts: Contact[]; folders: Folder[] }) {
+  const [folder, setFolder]       = useState<string | null>(null)
   const [company, setCompany]     = useState<string | null>(null)
   const [lob, setLob]             = useState<string | null>(null)
   const [tag, setTag]             = useState<string | null>(null)
@@ -71,29 +76,47 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
   const [deleteError, setDeleteError]       = useState<string | null>(null)
   const [isDeleting, startDeleteTransition] = useTransition()
 
-  const companies = useMemo(
-    () => [...new Set(contacts.map(c => c.company).filter(Boolean))] as string[],
-    [contacts]
-  )
+  const allFolders = useMemo(() => {
+    const seen = new Map<string, string>()
+    for (const c of contacts) {
+      if (c.folders) seen.set(c.folders.id, c.folders.name)
+    }
+    return [...seen.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [contacts])
+
+  const companies = useMemo(() => {
+    const source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    return [...new Set(source.map(c => c.company).filter(Boolean))] as string[]
+  }, [contacts, folder])
 
   const lobs = useMemo(() => {
-    const source = company ? contacts.filter(c => c.company === company) : contacts
+    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    if (company) source = source.filter(c => c.company === company)
     return [...new Set(source.map(c => c.line_of_business).filter(Boolean))] as string[]
-  }, [contacts, company])
+  }, [contacts, folder, company])
 
-  const allTags = useMemo(
-    () => [...new Set(contacts.flatMap(c => c.tags.map(t => t.tag)))].sort(),
-    [contacts]
-  )
+  const allTags = useMemo(() => {
+    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    if (company) source = source.filter(c => c.company === company)
+    if (lob) source = source.filter(c => c.line_of_business === lob)
+    return [...new Set(source.flatMap(c => c.tags.map(t => t.tag)))].sort()
+  }, [contacts, folder, company, lob])
+
+  const visibleTag = tag && allTags.includes(tag) ? tag : null
 
   const filtered = useMemo(() => {
     return contacts.filter(c => {
+      if (folder && c.folder_id !== folder) return false
       if (company && c.company !== company) return false
       if (lob && c.line_of_business !== lob) return false
-      if (tag && !c.tags.some(t => t.tag === tag)) return false
+      if (visibleTag && !c.tags.some(t => t.tag === visibleTag)) return false
       return true
     })
-  }, [contacts, company, lob, tag])
+  }, [contacts, folder, company, lob, tag])
+
+  function handleFolder(id: string) {
+    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setLob(null) }
+  }
 
   function handleCompany(val: string) {
     if (company === val) { setCompany(null) } else { setCompany(val); setLob(null) }
@@ -121,13 +144,14 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
     })
   }
 
-  const activeCount = [company, lob, tag].filter(Boolean).length
+  const activeCount = [folder, company, lob, visibleTag].filter(Boolean).length
 
   return (
     <>
       {drawerOpen && (
         <ContactDrawer
           contact={editingContact}
+          folders={folders}
           onClose={() => setDrawerOpen(false)}
         />
       )}
@@ -139,13 +163,24 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filters</span>
             {activeCount > 0 && (
               <button
-                onClick={() => { setCompany(null); setLob(null); setTag(null) }}
+                onClick={() => { setFolder(null); setCompany(null); setLob(null); setTag(null) }}
                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
               >
                 Clear all
               </button>
             )}
           </div>
+
+          {allFolders.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 w-24 shrink-0">Folder</span>
+              <div className="flex gap-2 flex-wrap">
+                {allFolders.map(f => (
+                  <FilterPill key={f.id} label={f.name} active={folder === f.id} onClick={() => handleFolder(f.id)} />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-slate-500 w-24 shrink-0">Company</span>
@@ -171,7 +206,7 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
             <span className="text-xs text-slate-500 w-24 shrink-0">Tag</span>
             <div className="flex gap-2 flex-wrap">
               {allTags.map(t => (
-                <FilterPill key={t} label={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)} />
+                <FilterPill key={t} label={t} active={visibleTag === t} onClick={() => setTag(tag === t ? null : t)} />
               ))}
             </div>
           </div>
@@ -200,17 +235,18 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/60">
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Name</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Folder</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tags</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Last Contact</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Notes</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-600 text-sm">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-600 text-sm">
                     No contacts match the selected filters.
                   </td>
                 </tr>
@@ -218,6 +254,9 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
                 filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-800/50 transition-colors">
                     <td className="px-5 py-3.5 font-medium text-slate-100 whitespace-nowrap">{c.name}</td>
+                    <td className="px-5 py-3.5 text-slate-400 text-xs whitespace-nowrap">
+                      {c.folders?.name ?? '—'}
+                    </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${companyClass(c.company)}`}>
                         {c.company}
@@ -236,8 +275,8 @@ export default function ContactsClient({ contacts }: { contacts: Contact[] }) {
                         ))}
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600 text-xs whitespace-nowrap">
-                      {c.last_contacted ?? '—'}
+                    <td className="px-5 py-3.5 text-slate-500 text-xs max-w-[200px] truncate">
+                      {c.notes ?? '—'}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-3">
