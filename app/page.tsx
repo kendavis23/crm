@@ -33,7 +33,7 @@ export default async function ContactsPage() {
     )
   }
 
-  const contacts = contactData as Contact[]
+  const contacts = contactData as unknown as Contact[]
   const folders  = (folderData ?? []) as Folder[]
 
   const total       = contacts.length
