@@ -288,7 +288,6 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/60">
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Name</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Folder</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Scope</th>
@@ -300,7 +299,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             <tbody className="divide-y divide-slate-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-slate-600 text-sm">
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-600 text-sm">
                     No contacts match your search or filters.
                   </td>
                 </tr>
@@ -311,9 +310,6 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                       <button onClick={() => openEdit(c)} className="text-slate-100 hover:text-indigo-400 transition-colors cursor-pointer text-left">
                         {c.name}
                       </button>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-400 text-xs whitespace-nowrap">
-                      {c.folders?.name ?? '—'}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${companyClass(c.company)}`}>
