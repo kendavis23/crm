@@ -68,6 +68,7 @@ function FilterPill({ label, active, onClick }: { label: string; active: boolean
 }
 
 export default function ContactsClient({ contacts, folders }: { contacts: Contact[]; folders: Folder[] }) {
+  const [search, setSearch]         = useState('')
   const [folder, setFolder]         = useState<string | null>(null)
   const [company, setCompany]       = useState<string | null>(null)
   const [lob, setLob]               = useState<string | null>(null)
@@ -116,15 +117,20 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
   const visibleTag        = tag && allTags.includes(tag) ? tag : null
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
     return contacts.filter(c => {
       if (folder && c.folder_id !== folder) return false
       if (company && c.company !== company) return false
       if (lob && c.line_of_business !== lob) return false
       if (visibleInitiative && !c.initiatives.some(i => i.initiative === visibleInitiative)) return false
       if (visibleTag && !c.tags.some(t => t.tag === visibleTag)) return false
+      if (q) {
+        const haystack = [c.name, c.company, c.title, c.email, c.notes].filter(Boolean).join(' ').toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       return true
     })
-  }, [contacts, folder, company, lob, visibleInitiative, visibleTag])
+  }, [contacts, folder, company, lob, visibleInitiative, visibleTag, search])
 
   function handleFolder(id: string) {
     if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setLob(null); setInitiative(null); setTag(null) }
@@ -156,7 +162,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     })
   }
 
-  const activeCount = [folder, company, lob, visibleInitiative, visibleTag].filter(Boolean).length
+  const activeCount = [search.trim() || null, folder, company, lob, visibleInitiative, visibleTag].filter(Boolean).length
 
   return (
     <>
@@ -171,16 +177,38 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
       <div className="space-y-4">
         {/* Filter bar */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 px-5 py-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filters</span>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search by name, company, title…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
             {activeCount > 0 && (
               <button
-                onClick={() => { setFolder(null); setCompany(null); setLob(null); setInitiative(null); setTag(null) }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                onClick={() => { setSearch(''); setFolder(null); setCompany(null); setLob(null); setInitiative(null); setTag(null) }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer whitespace-nowrap"
               >
                 Clear all
               </button>
             )}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filters</span>
           </div>
 
           {allFolders.length > 0 && (
@@ -272,7 +300,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-10 text-center text-slate-600 text-sm">
-                    No contacts match the selected filters.
+                    No contacts match your search or filters.
                   </td>
                 </tr>
               ) : (
