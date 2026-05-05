@@ -291,6 +291,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Folder</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Title</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Scope</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Initiatives / Tags</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Notes</th>
                 <th className="px-5 py-3" />
@@ -299,14 +300,18 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             <tbody className="divide-y divide-slate-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-600 text-sm">
+                  <td colSpan={8} className="px-5 py-10 text-center text-slate-600 text-sm">
                     No contacts match your search or filters.
                   </td>
                 </tr>
               ) : (
                 filtered.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-slate-100 whitespace-nowrap">{c.name}</td>
+                    <td className="px-5 py-3.5 font-medium whitespace-nowrap">
+                      <button onClick={() => openEdit(c)} className="text-slate-100 hover:text-indigo-400 transition-colors cursor-pointer text-left">
+                        {c.name}
+                      </button>
+                    </td>
                     <td className="px-5 py-3.5 text-slate-400 text-xs whitespace-nowrap">
                       {c.folders?.name ?? '—'}
                     </td>
@@ -319,6 +324,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-slate-400 max-w-[220px] leading-snug">{c.title}</td>
+                    <td className="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">{c.rel_type ?? '—'}</td>
                     <td className="px-5 py-3.5">
                       <div className="flex flex-col gap-1">
                         {c.initiatives.length > 0 && (

@@ -136,8 +136,8 @@ export default function ContactDrawer({
             <Field label="Title">
               <input name="title" defaultValue={contact?.title ?? ''} className={inputCls} placeholder="VP Engineering" />
             </Field>
-            <Field label="Relationship">
-              <input name="rel_type" defaultValue={contact?.rel_type ?? ''} className={inputCls} placeholder="client" />
+            <Field label="Scope">
+              <input name="rel_type" defaultValue={contact?.rel_type ?? ''} className={inputCls} placeholder="e.g. Global, APAC, Enterprise" />
             </Field>
           </div>
 
