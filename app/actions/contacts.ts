@@ -21,6 +21,11 @@ function parseTags(formData: FormData): string[] {
   return raw.split(',').map(t => t.trim()).filter(Boolean)
 }
 
+function parseInitiatives(formData: FormData): string[] {
+  const raw = (formData.get('initiatives') as string) ?? ''
+  return raw.split(',').map(t => t.trim()).filter(Boolean)
+}
+
 export async function createContact(formData: FormData): Promise<{ error?: string }> {
   const contact = parseContact(formData)
   if (!contact.name) return { error: 'Name is required' }
@@ -32,6 +37,11 @@ export async function createContact(formData: FormData): Promise<{ error?: strin
   const tags = parseTags(formData)
   if (tags.length > 0) {
     await supabase.from('tags').insert(tags.map(tag => ({ contact_id: data.id, tag })))
+  }
+
+  const initiatives = parseInitiatives(formData)
+  if (initiatives.length > 0) {
+    await supabase.from('initiatives').insert(initiatives.map(initiative => ({ contact_id: data.id, initiative })))
   }
 
   revalidatePath('/')
@@ -50,6 +60,12 @@ export async function updateContact(id: string, formData: FormData): Promise<{ e
   const tags = parseTags(formData)
   if (tags.length > 0) {
     await supabase.from('tags').insert(tags.map(tag => ({ contact_id: id, tag })))
+  }
+
+  await supabase.from('initiatives').delete().eq('contact_id', id)
+  const initiatives = parseInitiatives(formData)
+  if (initiatives.length > 0) {
+    await supabase.from('initiatives').insert(initiatives.map(initiative => ({ contact_id: id, initiative })))
   }
 
   revalidatePath('/')

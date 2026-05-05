@@ -26,6 +26,8 @@ export default function ContactDrawer({
   onClose: () => void
 }) {
   const isEdit = !!contact
+  const [initiatives, setInitiatives] = useState<string[]>(contact?.initiatives.map(i => i.initiative) ?? [])
+  const [initiativeInput, setInitiativeInput] = useState('')
   const [tags, setTags] = useState<string[]>(contact?.tags.map(t => t.tag) ?? [])
   const [tagInput, setTagInput] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +52,19 @@ export default function ContactDrawer({
     })
   }
 
+  function commitInitiative() {
+    const val = initiativeInput.trim().toLowerCase()
+    if (val && !initiatives.includes(val)) setInitiatives(prev => [...prev, val])
+    setInitiativeInput('')
+  }
+
+  function handleInitiativeKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      commitInitiative()
+    }
+  }
+
   function commitTag() {
     const val = tagInput.trim().toLowerCase()
     if (val && !tags.includes(val)) setTags(prev => [...prev, val])
@@ -64,6 +79,7 @@ export default function ContactDrawer({
   }
 
   function handleAction(formData: FormData) {
+    formData.set('initiatives', initiatives.join(','))
     formData.set('tags', tags.join(','))
     setError(null)
     startTransition(async () => {
@@ -181,6 +197,38 @@ export default function ContactDrawer({
 
           <Field label="LinkedIn URL">
             <input name="linkedin" defaultValue={contact?.linkedin ?? ''} className={inputCls} placeholder="https://linkedin.com/in/..." />
+          </Field>
+
+          <Field label="Initiatives">
+            <div className="space-y-2">
+              {initiatives.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {initiatives.map(i => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-teal-900/60 text-teal-300 border border-teal-800"
+                    >
+                      {i}
+                      <button
+                        type="button"
+                        onClick={() => setInitiatives(initiatives.filter(x => x !== i))}
+                        className="text-teal-500 hover:text-teal-200 leading-none cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                value={initiativeInput}
+                onChange={e => setInitiativeInput(e.target.value)}
+                onKeyDown={handleInitiativeKey}
+                onBlur={commitInitiative}
+                className={inputCls}
+                placeholder="Type an initiative and press Enter"
+              />
+            </div>
           </Field>
 
           <Field label="Tags">

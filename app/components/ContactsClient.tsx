@@ -4,7 +4,8 @@ import { useState, useMemo, useTransition } from 'react'
 import { deleteContact } from '@/app/actions/contacts'
 import ContactDrawer from './ContactDrawer'
 
-type Tag = { tag: string }
+type Tag        = { tag: string }
+type Initiative = { initiative: string }
 
 export type Folder = { id: string; name: string }
 
@@ -23,6 +24,7 @@ export type Contact = {
   notes: string | null
   last_contacted: string | null
   tags: Tag[]
+  initiatives: Initiative[]
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -66,10 +68,11 @@ function FilterPill({ label, active, onClick }: { label: string; active: boolean
 }
 
 export default function ContactsClient({ contacts, folders }: { contacts: Contact[]; folders: Folder[] }) {
-  const [folder, setFolder]       = useState<string | null>(null)
-  const [company, setCompany]     = useState<string | null>(null)
-  const [lob, setLob]             = useState<string | null>(null)
-  const [tag, setTag]             = useState<string | null>(null)
+  const [folder, setFolder]         = useState<string | null>(null)
+  const [company, setCompany]       = useState<string | null>(null)
+  const [lob, setLob]               = useState<string | null>(null)
+  const [initiative, setInitiative] = useState<string | null>(null)
+  const [tag, setTag]               = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]         = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | undefined>(undefined)
   const [deletingId, setDeletingId]         = useState<string | null>(null)
@@ -95,6 +98,13 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     return [...new Set(source.map(c => c.line_of_business).filter(Boolean))] as string[]
   }, [contacts, folder, company])
 
+  const allInitiatives = useMemo(() => {
+    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    if (company) source = source.filter(c => c.company === company)
+    if (lob) source = source.filter(c => c.line_of_business === lob)
+    return [...new Set(source.flatMap(c => c.initiatives.map(i => i.initiative)))].sort()
+  }, [contacts, folder, company, lob])
+
   const allTags = useMemo(() => {
     let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
     if (company) source = source.filter(c => c.company === company)
@@ -102,24 +112,26 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     return [...new Set(source.flatMap(c => c.tags.map(t => t.tag)))].sort()
   }, [contacts, folder, company, lob])
 
-  const visibleTag = tag && allTags.includes(tag) ? tag : null
+  const visibleInitiative = initiative && allInitiatives.includes(initiative) ? initiative : null
+  const visibleTag        = tag && allTags.includes(tag) ? tag : null
 
   const filtered = useMemo(() => {
     return contacts.filter(c => {
       if (folder && c.folder_id !== folder) return false
       if (company && c.company !== company) return false
       if (lob && c.line_of_business !== lob) return false
+      if (visibleInitiative && !c.initiatives.some(i => i.initiative === visibleInitiative)) return false
       if (visibleTag && !c.tags.some(t => t.tag === visibleTag)) return false
       return true
     })
-  }, [contacts, folder, company, lob, tag])
+  }, [contacts, folder, company, lob, visibleInitiative, visibleTag])
 
   function handleFolder(id: string) {
-    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setLob(null) }
+    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setLob(null); setInitiative(null); setTag(null) }
   }
 
   function handleCompany(val: string) {
-    if (company === val) { setCompany(null) } else { setCompany(val); setLob(null) }
+    if (company === val) { setCompany(null) } else { setCompany(val); setLob(null); setInitiative(null); setTag(null) }
   }
 
   function openAdd() {
@@ -144,7 +156,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     })
   }
 
-  const activeCount = [folder, company, lob, visibleTag].filter(Boolean).length
+  const activeCount = [folder, company, lob, visibleInitiative, visibleTag].filter(Boolean).length
 
   return (
     <>
@@ -163,7 +175,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Filters</span>
             {activeCount > 0 && (
               <button
-                onClick={() => { setFolder(null); setCompany(null); setLob(null); setTag(null) }}
+                onClick={() => { setFolder(null); setCompany(null); setLob(null); setInitiative(null); setTag(null) }}
                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
               >
                 Clear all
@@ -202,14 +214,27 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             </div>
           )}
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-slate-500 w-24 shrink-0">Tag</span>
-            <div className="flex gap-2 flex-wrap">
-              {allTags.map(t => (
-                <FilterPill key={t} label={t} active={visibleTag === t} onClick={() => setTag(tag === t ? null : t)} />
-              ))}
+          {allInitiatives.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 w-24 shrink-0">Initiative</span>
+              <div className="flex gap-2 flex-wrap">
+                {allInitiatives.map(i => (
+                  <FilterPill key={i} label={i} active={visibleInitiative === i} onClick={() => setInitiative(initiative === i ? null : i)} />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {allTags.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 w-24 shrink-0">Tag</span>
+              <div className="flex gap-2 flex-wrap">
+                {allTags.map(t => (
+                  <FilterPill key={t} label={t} active={visibleTag === t} onClick={() => setTag(tag === t ? null : t)} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Toolbar */}
@@ -238,7 +263,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Folder</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Title</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tags</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Initiatives / Tags</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Notes</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -267,12 +292,25 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                     </td>
                     <td className="px-5 py-3.5 text-slate-400 max-w-[220px] leading-snug">{c.title}</td>
                     <td className="px-5 py-3.5">
-                      <div className="flex flex-wrap gap-1">
-                        {c.tags.map(({ tag: t }) => (
-                          <span key={t} className={`px-2 py-0.5 rounded-full text-xs font-medium ${tagClass(t)}`}>
-                            {t}
-                          </span>
-                        ))}
+                      <div className="flex flex-col gap-1">
+                        {c.initiatives.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {c.initiatives.map(({ initiative: i }) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-900/60 text-teal-300">
+                                {i}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {c.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {c.tags.map(({ tag: t }) => (
+                              <span key={t} className={`px-2 py-0.5 rounded-full text-xs font-medium ${tagClass(t)}`}>
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-xs max-w-[200px] truncate">
