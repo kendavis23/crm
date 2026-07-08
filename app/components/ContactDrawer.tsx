@@ -30,6 +30,8 @@ export default function ContactDrawer({
   const [initiativeInput, setInitiativeInput] = useState('')
   const [tags, setTags] = useState<string[]>(contact?.tags.map(t => t.tag) ?? [])
   const [tagInput, setTagInput] = useState('')
+  const [skillTags, setSkillTags] = useState<string[]>(contact?.skill_tags.map(t => t.tag) ?? [])
+  const [skillTagInput, setSkillTagInput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -78,9 +80,23 @@ export default function ContactDrawer({
     }
   }
 
+  function commitSkillTag() {
+    const val = skillTagInput.trim().toLowerCase()
+    if (val && !skillTags.includes(val)) setSkillTags(prev => [...prev, val])
+    setSkillTagInput('')
+  }
+
+  function handleSkillTagKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      commitSkillTag()
+    }
+  }
+
   function handleAction(formData: FormData) {
     formData.set('initiatives', initiatives.join(','))
     formData.set('tags', tags.join(','))
+    formData.set('skill_tags', skillTags.join(','))
     setError(null)
     startTransition(async () => {
       const result = isEdit
@@ -127,8 +143,8 @@ export default function ContactDrawer({
             <Field label="Company">
               <input name="company" defaultValue={contact?.company ?? ''} className={inputCls} placeholder="Acme Corp" />
             </Field>
-            <Field label="Line of business">
-              <input name="line_of_business" defaultValue={contact?.line_of_business ?? ''} className={inputCls} placeholder="Sales" />
+            <Field label="Location">
+              <input name="location" defaultValue={contact?.location ?? ''} className={inputCls} placeholder="London, UK" />
             </Field>
           </div>
 
@@ -199,7 +215,7 @@ export default function ContactDrawer({
             <input name="linkedin" defaultValue={contact?.linkedin ?? ''} className={inputCls} placeholder="https://linkedin.com/in/..." />
           </Field>
 
-          <Field label="Initiatives">
+          <Field label="Projects">
             <div className="space-y-2">
               {initiatives.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -226,12 +242,12 @@ export default function ContactDrawer({
                 onKeyDown={handleInitiativeKey}
                 onBlur={commitInitiative}
                 className={inputCls}
-                placeholder="Type an initiative and press Enter"
+                placeholder="Type a project and press Enter"
               />
             </div>
           </Field>
 
-          <Field label="Tags">
+          <Field label="Role tags">
             <div className="space-y-2">
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -258,7 +274,39 @@ export default function ContactDrawer({
                 onKeyDown={handleTagKey}
                 onBlur={commitTag}
                 className={inputCls}
-                placeholder="Type a tag and press Enter"
+                placeholder="Type a role tag and press Enter"
+              />
+            </div>
+          </Field>
+
+          <Field label="Skill tags">
+            <div className="space-y-2">
+              {skillTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {skillTags.map(t => (
+                    <span
+                      key={t}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-indigo-900/60 text-indigo-300 border border-indigo-800"
+                    >
+                      {t}
+                      <button
+                        type="button"
+                        onClick={() => setSkillTags(skillTags.filter(x => x !== t))}
+                        className="text-indigo-400 hover:text-indigo-200 leading-none cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                value={skillTagInput}
+                onChange={e => setSkillTagInput(e.target.value)}
+                onKeyDown={handleSkillTagKey}
+                onBlur={commitSkillTag}
+                className={inputCls}
+                placeholder="Type a skill tag and press Enter"
               />
             </div>
           </Field>

@@ -8,7 +8,7 @@ function parseContact(formData: FormData) {
     name:             (formData.get('name')             as string)?.trim() || null,
     folder_id:        (formData.get('folder_id')        as string)?.trim() || null,
     company:          (formData.get('company')          as string)?.trim() || null,
-    line_of_business: (formData.get('line_of_business') as string)?.trim() || null,
+    location:         (formData.get('location')         as string)?.trim() || null,
     title:            (formData.get('title')            as string)?.trim() || null,
     rel_type:         (formData.get('rel_type')         as string)?.trim() || null,
     linkedin:         (formData.get('linkedin')         as string)?.trim() || null,
@@ -18,6 +18,11 @@ function parseContact(formData: FormData) {
 
 function parseTags(formData: FormData): string[] {
   const raw = (formData.get('tags') as string) ?? ''
+  return raw.split(',').map(t => t.trim()).filter(Boolean)
+}
+
+function parseSkillTags(formData: FormData): string[] {
+  const raw = (formData.get('skill_tags') as string) ?? ''
   return raw.split(',').map(t => t.trim()).filter(Boolean)
 }
 
@@ -37,6 +42,11 @@ export async function createContact(formData: FormData): Promise<{ error?: strin
   const tags = parseTags(formData)
   if (tags.length > 0) {
     await supabase.from('tags').insert(tags.map(tag => ({ contact_id: data.id, tag })))
+  }
+
+  const skillTags = parseSkillTags(formData)
+  if (skillTags.length > 0) {
+    await supabase.from('skill_tags').insert(skillTags.map(tag => ({ contact_id: data.id, tag })))
   }
 
   const initiatives = parseInitiatives(formData)
@@ -60,6 +70,12 @@ export async function updateContact(id: string, formData: FormData): Promise<{ e
   const tags = parseTags(formData)
   if (tags.length > 0) {
     await supabase.from('tags').insert(tags.map(tag => ({ contact_id: id, tag })))
+  }
+
+  await supabase.from('skill_tags').delete().eq('contact_id', id)
+  const skillTags = parseSkillTags(formData)
+  if (skillTags.length > 0) {
+    await supabase.from('skill_tags').insert(skillTags.map(tag => ({ contact_id: id, tag })))
   }
 
   await supabase.from('initiatives').delete().eq('contact_id', id)

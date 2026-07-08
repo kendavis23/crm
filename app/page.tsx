@@ -19,7 +19,7 @@ export default async function ContactsPage() {
   const [{ data: contactData, error }, { data: folderData }] = await Promise.all([
     supabase
       .from('contacts')
-      .select('id, name, company, line_of_business, title, rel_type, email, phone, linkedin, notes, last_contacted, folder_id, folders(id, name), tags(tag), initiatives(initiative)')
+      .select('id, name, company, location, title, rel_type, email, phone, linkedin, notes, last_contacted, folder_id, folders(id, name), tags(tag), skill_tags(tag), initiatives(initiative)')
       .order('company')
       .order('name'),
     supabase.from('folders').select('id, name').order('name'),

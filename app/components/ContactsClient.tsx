@@ -15,7 +15,7 @@ export type Contact = {
   folder_id: string | null
   folders: { id: string; name: string } | null
   company: string | null
-  line_of_business: string | null
+  location: string | null
   title: string | null
   rel_type: string | null
   email: string | null
@@ -24,6 +24,7 @@ export type Contact = {
   notes: string | null
   last_contacted: string | null
   tags: Tag[]
+  skill_tags: Tag[]
   initiatives: Initiative[]
 }
 
@@ -71,9 +72,9 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
   const [search, setSearch]         = useState('')
   const [folder, setFolder]         = useState<string | null>(null)
   const [company, setCompany]       = useState<string | null>(null)
-  const [lob, setLob]               = useState<string | null>(null)
   const [initiative, setInitiative] = useState<string | null>(null)
-  const [tag, setTag]               = useState<string | null>(null)
+  const [roleTag, setRoleTag]       = useState<string | null>(null)
+  const [skillTag, setSkillTag]     = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]         = useState(false)
   const [editingContact, setEditingContact] = useState<Contact | undefined>(undefined)
   const [deletingId, setDeletingId]         = useState<string | null>(null)
@@ -93,51 +94,50 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     return [...new Set(source.map(c => c.company).filter(Boolean))] as string[]
   }, [contacts, folder])
 
-  const lobs = useMemo(() => {
-    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
-    if (company) source = source.filter(c => c.company === company)
-    return [...new Set(source.map(c => c.line_of_business).filter(Boolean))] as string[]
-  }, [contacts, folder, company])
-
   const allInitiatives = useMemo(() => {
     let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
     if (company) source = source.filter(c => c.company === company)
-    if (lob) source = source.filter(c => c.line_of_business === lob)
     return [...new Set(source.flatMap(c => c.initiatives.map(i => i.initiative)))].sort()
-  }, [contacts, folder, company, lob])
+  }, [contacts, folder, company])
 
-  const allTags = useMemo(() => {
+  const allRoleTags = useMemo(() => {
     let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
     if (company) source = source.filter(c => c.company === company)
-    if (lob) source = source.filter(c => c.line_of_business === lob)
     return [...new Set(source.flatMap(c => c.tags.map(t => t.tag)))].sort()
-  }, [contacts, folder, company, lob])
+  }, [contacts, folder, company])
+
+  const allSkillTags = useMemo(() => {
+    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    if (company) source = source.filter(c => c.company === company)
+    return [...new Set(source.flatMap(c => c.skill_tags.map(t => t.tag)))].sort()
+  }, [contacts, folder, company])
 
   const visibleInitiative = initiative && allInitiatives.includes(initiative) ? initiative : null
-  const visibleTag        = tag && allTags.includes(tag) ? tag : null
+  const visibleRoleTag    = roleTag && allRoleTags.includes(roleTag) ? roleTag : null
+  const visibleSkillTag   = skillTag && allSkillTags.includes(skillTag) ? skillTag : null
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return contacts.filter(c => {
       if (folder && c.folder_id !== folder) return false
       if (company && c.company !== company) return false
-      if (lob && c.line_of_business !== lob) return false
       if (visibleInitiative && !c.initiatives.some(i => i.initiative === visibleInitiative)) return false
-      if (visibleTag && !c.tags.some(t => t.tag === visibleTag)) return false
+      if (visibleRoleTag && !c.tags.some(t => t.tag === visibleRoleTag)) return false
+      if (visibleSkillTag && !c.skill_tags.some(t => t.tag === visibleSkillTag)) return false
       if (q) {
-        const haystack = [c.name, c.company, c.title, c.email, c.notes].filter(Boolean).join(' ').toLowerCase()
+        const haystack = [c.name, c.company, c.title, c.email, c.location, c.notes].filter(Boolean).join(' ').toLowerCase()
         if (!haystack.includes(q)) return false
       }
       return true
     })
-  }, [contacts, folder, company, lob, visibleInitiative, visibleTag, search])
+  }, [contacts, folder, company, visibleInitiative, visibleRoleTag, visibleSkillTag, search])
 
   function handleFolder(id: string) {
-    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setLob(null); setInitiative(null); setTag(null) }
+    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setInitiative(null); setRoleTag(null); setSkillTag(null) }
   }
 
   function handleCompany(val: string) {
-    if (company === val) { setCompany(null) } else { setCompany(val); setLob(null); setInitiative(null); setTag(null) }
+    if (company === val) { setCompany(null) } else { setCompany(val); setInitiative(null); setRoleTag(null); setSkillTag(null) }
   }
 
   function openAdd() {
@@ -162,7 +162,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     })
   }
 
-  const activeCount = [search.trim() || null, folder, company, lob, visibleInitiative, visibleTag].filter(Boolean).length
+  const activeCount = [search.trim() || null, folder, company, visibleInitiative, visibleRoleTag, visibleSkillTag].filter(Boolean).length
 
   return (
     <>
@@ -200,7 +200,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             </div>
             {activeCount > 0 && (
               <button
-                onClick={() => { setSearch(''); setFolder(null); setCompany(null); setLob(null); setInitiative(null); setTag(null) }}
+                onClick={() => { setSearch(''); setFolder(null); setCompany(null); setInitiative(null); setRoleTag(null); setSkillTag(null) }}
                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer whitespace-nowrap"
               >
                 Clear all
@@ -231,20 +231,9 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             </div>
           </div>
 
-          {lobs.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500 w-24 shrink-0">Line of business</span>
-              <div className="flex gap-2 flex-wrap">
-                {lobs.map(l => (
-                  <FilterPill key={l} label={l} active={lob === l} onClick={() => setLob(lob === l ? null : l)} />
-                ))}
-              </div>
-            </div>
-          )}
-
           {allInitiatives.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500 w-24 shrink-0">Initiative</span>
+              <span className="text-xs text-slate-500 w-24 shrink-0">Project</span>
               <div className="flex gap-2 flex-wrap">
                 {allInitiatives.map(i => (
                   <FilterPill key={i} label={i} active={visibleInitiative === i} onClick={() => setInitiative(initiative === i ? null : i)} />
@@ -253,12 +242,23 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             </div>
           )}
 
-          {allTags.length > 0 && (
+          {allRoleTags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-slate-500 w-24 shrink-0">Tag</span>
+              <span className="text-xs text-slate-500 w-24 shrink-0">Role tag</span>
               <div className="flex gap-2 flex-wrap">
-                {allTags.map(t => (
-                  <FilterPill key={t} label={t} active={visibleTag === t} onClick={() => setTag(tag === t ? null : t)} />
+                {allRoleTags.map(t => (
+                  <FilterPill key={t} label={t} active={visibleRoleTag === t} onClick={() => setRoleTag(roleTag === t ? null : t)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {allSkillTags.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 w-24 shrink-0">Skill tag</span>
+              <div className="flex gap-2 flex-wrap">
+                {allSkillTags.map(t => (
+                  <FilterPill key={t} label={t} active={visibleSkillTag === t} onClick={() => setSkillTag(skillTag === t ? null : t)} />
                 ))}
               </div>
             </div>
@@ -291,7 +291,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Company</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Title</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Scope</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Initiatives / Tags</th>
+                <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Projects / Tags</th>
                 <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Notes</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -310,14 +310,14 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                       <button onClick={() => openEdit(c)} className="text-slate-100 hover:text-indigo-400 transition-colors cursor-pointer text-left">
                         {c.name}
                       </button>
+                      {c.location && (
+                        <span className="block text-xs text-slate-600 mt-0.5 font-normal">{c.location}</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${companyClass(c.company)}`}>
                         {c.company}
                       </span>
-                      {c.line_of_business && (
-                        <span className="block text-xs text-slate-600 mt-0.5">{c.line_of_business}</span>
-                      )}
                     </td>
                     <td className="px-5 py-3.5 text-slate-400 max-w-[220px] leading-snug">{c.title}</td>
                     <td className="px-5 py-3.5 text-slate-500 text-xs whitespace-nowrap">{c.rel_type ?? '—'}</td>
@@ -336,6 +336,15 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                           <div className="flex flex-wrap gap-1">
                             {c.tags.map(({ tag: t }) => (
                               <span key={t} className={`px-2 py-0.5 rounded-full text-xs font-medium ${tagClass(t)}`}>
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {c.skill_tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {c.skill_tags.map(({ tag: t }) => (
+                              <span key={t} className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-900/60 text-indigo-300">
                                 {t}
                               </span>
                             ))}
