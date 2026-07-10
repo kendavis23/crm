@@ -28,6 +28,8 @@ export default function ContactDrawer({
   const isEdit = !!contact
   const [initiatives, setInitiatives] = useState<string[]>(contact?.initiatives.map(i => i.initiative) ?? [])
   const [initiativeInput, setInitiativeInput] = useState('')
+  const [bdPursuits, setBdPursuits] = useState<string[]>(contact?.bd_pursuits.map(p => p.pursuit) ?? [])
+  const [bdPursuitInput, setBdPursuitInput] = useState('')
   const [tags, setTags] = useState<string[]>(contact?.tags.map(t => t.tag) ?? [])
   const [tagInput, setTagInput] = useState('')
   const [skillTags, setSkillTags] = useState<string[]>(contact?.skill_tags.map(t => t.tag) ?? [])
@@ -67,6 +69,19 @@ export default function ContactDrawer({
     }
   }
 
+  function commitBdPursuit() {
+    const val = bdPursuitInput.trim().toLowerCase()
+    if (val && !bdPursuits.includes(val)) setBdPursuits(prev => [...prev, val])
+    setBdPursuitInput('')
+  }
+
+  function handleBdPursuitKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      commitBdPursuit()
+    }
+  }
+
   function commitTag() {
     const val = tagInput.trim().toLowerCase()
     if (val && !tags.includes(val)) setTags(prev => [...prev, val])
@@ -95,6 +110,7 @@ export default function ContactDrawer({
 
   function handleAction(formData: FormData) {
     formData.set('initiatives', initiatives.join(','))
+    formData.set('bd_pursuits', bdPursuits.join(','))
     formData.set('tags', tags.join(','))
     formData.set('skill_tags', skillTags.join(','))
     setError(null)
@@ -243,6 +259,38 @@ export default function ContactDrawer({
                 onBlur={commitInitiative}
                 className={inputCls}
                 placeholder="Type a project and press Enter"
+              />
+            </div>
+          </Field>
+
+          <Field label="BD Pursuits">
+            <div className="space-y-2">
+              {bdPursuits.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {bdPursuits.map(p => (
+                    <span
+                      key={p}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-900/60 text-amber-300 border border-amber-800"
+                    >
+                      {p}
+                      <button
+                        type="button"
+                        onClick={() => setBdPursuits(bdPursuits.filter(x => x !== p))}
+                        className="text-amber-500 hover:text-amber-200 leading-none cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                value={bdPursuitInput}
+                onChange={e => setBdPursuitInput(e.target.value)}
+                onKeyDown={handleBdPursuitKey}
+                onBlur={commitBdPursuit}
+                className={inputCls}
+                placeholder="Type a BD pursuit and press Enter"
               />
             </div>
           </Field>

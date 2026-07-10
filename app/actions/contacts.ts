@@ -31,6 +31,11 @@ function parseInitiatives(formData: FormData): string[] {
   return raw.split(',').map(t => t.trim()).filter(Boolean)
 }
 
+function parseBdPursuits(formData: FormData): string[] {
+  const raw = (formData.get('bd_pursuits') as string) ?? ''
+  return raw.split(',').map(t => t.trim()).filter(Boolean)
+}
+
 export async function createContact(formData: FormData): Promise<{ error?: string }> {
   const contact = parseContact(formData)
   if (!contact.name) return { error: 'Name is required' }
@@ -52,6 +57,11 @@ export async function createContact(formData: FormData): Promise<{ error?: strin
   const initiatives = parseInitiatives(formData)
   if (initiatives.length > 0) {
     await supabase.from('initiatives').insert(initiatives.map(initiative => ({ contact_id: data.id, initiative })))
+  }
+
+  const bdPursuits = parseBdPursuits(formData)
+  if (bdPursuits.length > 0) {
+    await supabase.from('bd_pursuits').insert(bdPursuits.map(pursuit => ({ contact_id: data.id, pursuit })))
   }
 
   revalidatePath('/')
@@ -82,6 +92,12 @@ export async function updateContact(id: string, formData: FormData): Promise<{ e
   const initiatives = parseInitiatives(formData)
   if (initiatives.length > 0) {
     await supabase.from('initiatives').insert(initiatives.map(initiative => ({ contact_id: id, initiative })))
+  }
+
+  await supabase.from('bd_pursuits').delete().eq('contact_id', id)
+  const bdPursuits = parseBdPursuits(formData)
+  if (bdPursuits.length > 0) {
+    await supabase.from('bd_pursuits').insert(bdPursuits.map(pursuit => ({ contact_id: id, pursuit })))
   }
 
   revalidatePath('/')

@@ -6,6 +6,7 @@ import ContactDrawer from './ContactDrawer'
 
 type Tag        = { tag: string }
 type Initiative = { initiative: string }
+type BdPursuit  = { pursuit: string }
 
 export type Folder = { id: string; name: string }
 
@@ -26,6 +27,7 @@ export type Contact = {
   tags: Tag[]
   skill_tags: Tag[]
   initiatives: Initiative[]
+  bd_pursuits: BdPursuit[]
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -73,6 +75,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
   const [folder, setFolder]         = useState<string | null>(null)
   const [company, setCompany]       = useState<string | null>(null)
   const [initiative, setInitiative] = useState<string | null>(null)
+  const [bdPursuit, setBdPursuit]   = useState<string | null>(null)
   const [roleTag, setRoleTag]       = useState<string | null>(null)
   const [skillTag, setSkillTag]     = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen]         = useState(false)
@@ -100,6 +103,12 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     return [...new Set(source.flatMap(c => c.initiatives.map(i => i.initiative)))].sort()
   }, [contacts, folder, company])
 
+  const allBdPursuits = useMemo(() => {
+    let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
+    if (company) source = source.filter(c => c.company === company)
+    return [...new Set(source.flatMap(c => c.bd_pursuits.map(p => p.pursuit)))].sort()
+  }, [contacts, folder, company])
+
   const allRoleTags = useMemo(() => {
     let source = folder ? contacts.filter(c => c.folder_id === folder) : contacts
     if (company) source = source.filter(c => c.company === company)
@@ -113,6 +122,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
   }, [contacts, folder, company])
 
   const visibleInitiative = initiative && allInitiatives.includes(initiative) ? initiative : null
+  const visibleBdPursuit  = bdPursuit && allBdPursuits.includes(bdPursuit) ? bdPursuit : null
   const visibleRoleTag    = roleTag && allRoleTags.includes(roleTag) ? roleTag : null
   const visibleSkillTag   = skillTag && allSkillTags.includes(skillTag) ? skillTag : null
 
@@ -122,6 +132,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
       if (folder && c.folder_id !== folder) return false
       if (company && c.company !== company) return false
       if (visibleInitiative && !c.initiatives.some(i => i.initiative === visibleInitiative)) return false
+      if (visibleBdPursuit && !c.bd_pursuits.some(p => p.pursuit === visibleBdPursuit)) return false
       if (visibleRoleTag && !c.tags.some(t => t.tag === visibleRoleTag)) return false
       if (visibleSkillTag && !c.skill_tags.some(t => t.tag === visibleSkillTag)) return false
       if (q) {
@@ -130,14 +141,14 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
       }
       return true
     })
-  }, [contacts, folder, company, visibleInitiative, visibleRoleTag, visibleSkillTag, search])
+  }, [contacts, folder, company, visibleInitiative, visibleBdPursuit, visibleRoleTag, visibleSkillTag, search])
 
   function handleFolder(id: string) {
-    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setInitiative(null); setRoleTag(null); setSkillTag(null) }
+    if (folder === id) { setFolder(null) } else { setFolder(id); setCompany(null); setInitiative(null); setBdPursuit(null); setRoleTag(null); setSkillTag(null) }
   }
 
   function handleCompany(val: string) {
-    if (company === val) { setCompany(null) } else { setCompany(val); setInitiative(null); setRoleTag(null); setSkillTag(null) }
+    if (company === val) { setCompany(null) } else { setCompany(val); setInitiative(null); setBdPursuit(null); setRoleTag(null); setSkillTag(null) }
   }
 
   function openAdd() {
@@ -162,7 +173,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
     })
   }
 
-  const activeCount = [search.trim() || null, folder, company, visibleInitiative, visibleRoleTag, visibleSkillTag].filter(Boolean).length
+  const activeCount = [search.trim() || null, folder, company, visibleInitiative, visibleBdPursuit, visibleRoleTag, visibleSkillTag].filter(Boolean).length
 
   return (
     <>
@@ -200,7 +211,7 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
             </div>
             {activeCount > 0 && (
               <button
-                onClick={() => { setSearch(''); setFolder(null); setCompany(null); setInitiative(null); setRoleTag(null); setSkillTag(null) }}
+                onClick={() => { setSearch(''); setFolder(null); setCompany(null); setInitiative(null); setBdPursuit(null); setRoleTag(null); setSkillTag(null) }}
                 className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer whitespace-nowrap"
               >
                 Clear all
@@ -237,6 +248,17 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
               <div className="flex gap-2 flex-wrap">
                 {allInitiatives.map(i => (
                   <FilterPill key={i} label={i} active={visibleInitiative === i} onClick={() => setInitiative(initiative === i ? null : i)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {allBdPursuits.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-500 w-24 shrink-0">BD Pursuit</span>
+              <div className="flex gap-2 flex-wrap">
+                {allBdPursuits.map(p => (
+                  <FilterPill key={p} label={p} active={visibleBdPursuit === p} onClick={() => setBdPursuit(bdPursuit === p ? null : p)} />
                 ))}
               </div>
             </div>
@@ -328,6 +350,15 @@ export default function ContactsClient({ contacts, folders }: { contacts: Contac
                             {c.initiatives.map(({ initiative: i }) => (
                               <span key={i} className="px-2 py-0.5 rounded-full text-xs font-medium bg-teal-900/60 text-teal-300">
                                 {i}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {c.bd_pursuits.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {c.bd_pursuits.map(({ pursuit: p }) => (
+                              <span key={p} className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-900/60 text-amber-300">
+                                {p}
                               </span>
                             ))}
                           </div>
